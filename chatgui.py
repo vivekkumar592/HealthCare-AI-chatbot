@@ -2,17 +2,18 @@ import nltk
 from nltk.stem import WordNetLemmatizer
 lemmatizer = WordNetLemmatizer()
 import pickle
+import pandas
 import numpy as np
-
 from keras.models import load_model
 model = load_model('chatbot_model.h5')
 import json
 import random
+import array
 intents = json.loads(open('intents.json').read())
 words = pickle.load(open('words.pkl','rb'))
 classes = pickle.load(open('classes.pkl','rb'))
 
-
+prev=""
 def clean_up_sentence(sentence):
     # tokenize the pattern - split words into array
     sentence_words = nltk.word_tokenize(sentence)
@@ -70,20 +71,64 @@ from tkinter import *
 
 
 def send():
-    msg = EntryBox.get("1.0",'end-1c').strip()
-    EntryBox.delete("0.0",END)
+    global prev
+    if(prev!="Please tell the symptoms" and prev!="Tell me the symptoms"):
+        msg = EntryBox.get("1.0",'end-1c').strip()
+        EntryBox.delete("0.0",END)
 
-    if msg != '':
-        ChatLog.config(state=NORMAL)
-        ChatLog.insert(END, "You: " + msg + '\n\n')
-        ChatLog.config(foreground="#442265", font=("Verdana", 12 ))
-    
-        res = chatbot_response(msg)
-        ChatLog.insert(END, "Bot: " + res + '\n\n')
+        if msg != '':
+            ChatLog.config(state=NORMAL)
+            ChatLog.insert(END, "You: " + msg + '\n\n')
+            ChatLog.config(foreground="#442265", font=("Verdana", 12 ))
+            cass=predict_class(msg,model)
+            res = chatbot_response(msg)
+            prev=res
+            print(prev)
+            ChatLog.insert(END, "Bot: " + res + '\n\n')
+       
             
+            ChatLog.config(state=DISABLED)
+            ChatLog.yview(END)
+    else:
+        sym= EntryBox.get("1.0",'end-1c').strip()
+        EntryBox.delete("0.0",END)
+        ChatLog.config(state=NORMAL)
+        ChatLog.insert(END, "You: " + sym + '\n\n')
+        ChatLog.config(foreground="#442265", font=("Verdana", 12 ))
+        import csv 
+  
+# csv file name 
+        filename = "Training.csv"
+  
+# initializing the titles and rows list 
+        feat = [] 
+                
+# reading csv file 
+        with open(filename, 'r') as csvfile: 
+    # creating a csv reader object 
+              csvreader = csv.reader(csvfile) 
+      
+    # extracting field names through first row 
+              feat = next(csvreader) 
+        print(sym)
+        
+        loaded_model = pickle.load(open('predicting_model','rb'))
+        Sympt=np.array([0]*132)
+        print(len(feat))
+        sym=sym.split(",")
+        print(sym)
+        print(np.where(np.in1d(feat, sym))[0])
+        for i in np.where(np.in1d(feat, sym))[0]:
+               Sympt[i]=1;
+        
+        print(Sympt)
+        Sympt=Sympt.reshape(1,-1)
+        result = loaded_model.predict(Sympt)
+       
+        ChatLog.insert(END,"Bot: "+ result + '\n\n')
+        ChatLog.config(foreground="#442265", font=("Verdana", 12 ))
         ChatLog.config(state=DISABLED)
-        ChatLog.yview(END)
- 
+        ChatLog.yview(END) 
 
 base = Tk()
 base.title("Hello")
